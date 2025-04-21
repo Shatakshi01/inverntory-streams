@@ -20,33 +20,11 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_MAX_TIMEOUT_MS: 120000
     networks:
       - kafka-net
-
-#  ksqldb-server:
-#    image: confluentinc/ksqldb-server:0.29.0
-#    platform: linux/amd64
-#    depends_on:
-#      - kafka
-#    ports:
-#      - "8088:8088"
-#    environment:
-#      KSQL_CONFIG_DIR: "/etc/ksql"
-#      KSQL_LISTENERS: "http://0.0.0.0:8088"
-#      KSQL_BOOTSTRAP_SERVERS: "kafka:9092"
-#      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
-#    networks:
-#      - kafka-net
-#
-#  ksqldb-cli:
-#    image: confluentinc/ksqldb-cli:0.29.0
-#    platform: linux/amd64
-#    depends_on:
-#      - ksqldb-server
-#    entrypoint: /bin/sh
-#    tty: true
-#    networks:
-#      - kafka-net
 
   akhq:
     image: tchiotludo/akhq
@@ -60,5 +38,47 @@ services:
                 bootstrap.servers: "kafka:29092"
     networks:
           - kafka-net
+
+  ksqldb-server:
+    image: confluentinc/ksqldb-server:0.29.0
+    platform: linux/amd64
+    container_name: ksqldb-server
+    hostname: ksqldb-server
+    ports:
+      - "8088:8088"
+    depends_on:
+      - kafka
+    environment:
+      KSQL_BOOTSTRAP_SERVERS: "kafka:29092"
+      KSQL_HOST_NAME: "ksqldb-server"
+      KSQL_ADVERTISED_LISTENERS: "http://localhost:8088"
+      KSQL_LISTENERS: "http://0.0.0.0:8088"
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+      KSQL_KSQL_STREAMS_PRODUCER_MAX_BLOCK_MS: 120000
+      KSQL_KSQL_STREAMS_PRODUCER_DELIVERY_TIMEOUT_MS: 300000
+      KSQL_KSQL_STREAMS_REQUEST_TIMEOUT_MS: 120000
+    networks:
+      - kafka-net
+
+  ksqldb-cli:
+    image: confluentinc/ksqldb-cli:0.29.0
+    platform: linux/amd64
+    container_name: ksqldb-cli
+    depends_on:
+      - ksqldb-server
+    tty: true
+    networks:
+      - kafka-net
+    volumes:
+      - ./ksql:/ksql
+    command: >
+      /bin/sh -c "
+        echo 'Waiting for ksqlDB Server to start...' &&
+        sleep 120 &&  
+        echo 'Trying to execute ksqlDB scripts...' &&
+        ksql http://ksqldb-server:8088 < /ksql/inventory-schema.sql || echo 'Script execution failed, but continuing' &&
+        tail -f /dev/null
+      "
 networks:
   kafka-net:

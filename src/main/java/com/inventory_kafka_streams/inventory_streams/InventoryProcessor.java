@@ -32,7 +32,7 @@ public class InventoryProcessor {
         log.info("🔧 Setting up Kafka Streams Topology... Input: inventory, Output: inventory-per-warehouse , Alert: low-stock-alerts");
 
         KStream<String, InventoryEvent> stream = builder.stream(
-            "inventory",
+            "inventory_java_stream",
             Consumed.with(Serdes.String(), inventoryEventSerde)
         );
 
@@ -73,19 +73,19 @@ public class InventoryProcessor {
             .toStream()
             .peek((key, value) ->
                 log.info("📤 Sending to {}: Key={}, ProductId={}, WarehouseId={}, TotalStock={}",
-                   "inventory-per-warehouse", key, value.getProductId(), value.getWarehouseId(), value.getTotalQuantity())
+                   "inventory-per-warehouse_jstream", key, value.getProductId(), value.getWarehouseId(), value.getTotalQuantity())
             )
-            .to("inventory-per-warehouse", Produced.with(Serdes.String(), inventoryAggregateSerde));
+            .to("inventory-per-warehouse_jstream", Produced.with(Serdes.String(), inventoryAggregateSerde));
 
         // Generate low stock alerts
         stockPerWarehouse
             .toStream()
-            .filter((key, value) -> value.getTotalQuantity() < 30)
+            .filter((key, value) -> value.getTotalQuantity() < 20)
             .peek((key, value) ->
                 log.warn("🚨 Low stock alert for {} => Remaining stock: {}",
                     key, value.getTotalQuantity())
             )
-            .to("low-stock-alerts", Produced.with(Serdes.String(), inventoryAggregateSerde));
+            .to("low-stock-alerts_jstream", Produced.with(Serdes.String(), inventoryAggregateSerde));
 
         return stream;
     }
