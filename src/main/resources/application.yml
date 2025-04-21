@@ -1,0 +1,45 @@
+
+
+spring:
+  application:
+    name: inventory-tracker
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.inventory_kafka_streams.inventory_streams.*
+    streams:
+      application-id: inventory-streams
+      properties:
+        default.key.serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+        default.value.serde: org.springframework.kafka.support.serializer.JsonSerde
+    topic-creation:
+      enabled: true
+      additional-topics:
+        - name: inventory
+          partitions: 3
+          replication-factor: 1
+        - name: inventory-per-warehouse
+          partitions: 1
+          replication-factor: 3
+        - name: low-stock-alerts
+          partitions: 3
+          replication-factor: 1
+
+kafka:
+  input-topic: inventory
+  output-topic: inventory-per-warehouse
+  alert-topic: low-stock-alerts
+
+logging:
+  level:
+    com.inventory_kafka_streams: DEBUG
+    org.apache.kafka: WARN
+server:
+  port: 8081
