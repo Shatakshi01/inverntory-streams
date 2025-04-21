@@ -41,7 +41,8 @@ public class InventoryProducer {
                 String key = event.getProductId();
 
                 try {
-                    kafkaTemplate.send("inventory", key, event).get(); // Using get() to make it synchronous
+                    kafkaTemplate.send("inventory_java_stream", key, event).get(); // Using get() to make it synchronous
+                    kafkaTemplate.send("inventory_ksql", key, event).get(); // Using get() to make it synchronous
 
                     logger.info("✅ Sent event → Key: {}, Product: {}, Warehouse: {}, Quantity: {}",
                         key, event.getProductId(), event.getWarehouseId(), event.getQuantity());
